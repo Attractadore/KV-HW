@@ -1,6 +1,8 @@
 #include "pe.h"
 #include "binary_op.h"
 
+#include <assert.h>
+#include <limits.h>
 #include <stdlib.h>
 
 struct sieve_b* allocate_sieve_b(size_t n) {

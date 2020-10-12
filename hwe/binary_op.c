@@ -1,5 +1,8 @@
 #include "binary_op.h"
 
+#include <assert.h>
+#include <limits.h>
+
 void set_bit(unsigned char *p, ull n) {
     assert(n < CHAR_BIT);
 

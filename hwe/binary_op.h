@@ -1,7 +1,5 @@
 #pragma once
 
-#include <assert.h>
-#include <limits.h>
 #include <stdbool.h>
 
 typedef unsigned long long ull;
