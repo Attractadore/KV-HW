@@ -119,7 +119,6 @@ Polynome* polynomeMulKarInp(Polynome const* const lhs, Polynome const* const rhs
     assert(res->len >= polynomeMulDegree(lhs, rhs));
 
     const size_t half_len = ((lhs->len <= rhs->len) ? (lhs->len) : (rhs->len)) / 2;
-    const size_t half_degree = half_len - 1;
     const size_t lhs_degree = lhs->len - 1;
     const size_t rhs_degree = rhs->len - 1;
 
@@ -127,21 +126,25 @@ Polynome* polynomeMulKarInp(Polynome const* const lhs, Polynome const* const rhs
 
     const Polynome B = {
         half_len,
-        lhs->coefs};
+        lhs->coefs,
+    };
 
     Polynome* const C = polynomeCoefDup(rhs, half_len, rhs_degree);
 
     const Polynome D = {
         half_len,
-        rhs->coefs};
+        rhs->coefs,
+    };
 
     Polynome AC = {
         polynomeMulDegree(A, C) + 1,
-        res->coefs + 2 * half_len};
+        res->coefs + 2 * half_len,
+    };
 
     Polynome BD = {
         polynomeMulDegree(&B, &D) + 1,
-        res->coefs};
+        res->coefs,
+    };
 
     if (!A || !C) {
         goto fail;
@@ -162,7 +165,8 @@ Polynome* polynomeMulKarInp(Polynome const* const lhs, Polynome const* const rhs
 
     Polynome res_tmp = {
         tmp->len,
-        res->coefs + half_len};
+        res->coefs + half_len,
+    };
 
     polynomeAddInp(&res_tmp, tmp);
 
