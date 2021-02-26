@@ -21,33 +21,19 @@ void polynomeFree(Polynome* const poly) {
     free(poly);
 }
 
-Polynome* polynomeCoefDup(Polynome const* const poly, const size_t start_degree, const size_t end_degree) {
-    assert(poly);
-    assert(poly->len > 0);
-    assert(end_degree >= start_degree);
-    assert(end_degree < poly->len);
-
-    Polynome* const new_poly = polynomeAlloc(end_degree - start_degree);
-    if (!new_poly) {
-        return NULL;
-    }
-    memcpy(new_poly->coefs, poly->coefs + start_degree, sizeof(PolynomeType[new_poly->len]));
-
-    return new_poly;
-}
-
-#define DEFINE_PAIRWISE_INP_FUNC(func_name, op)                           \
-    Polynome* func_name(Polynome* const lhs, Polynome const* const rhs) { \
-        assert(lhs);                                                      \
-        assert(lhs->len > 0);                                             \
-        assert(rhs);                                                      \
-        assert(rhs->len > 0);                                             \
-        assert(lhs->len >= rhs->len);                                     \
-                                                                          \
-        for (size_t i = 0; i < rhs->len; i++) {                           \
-            lhs->coefs[i] = lhs->coefs[i] op rhs->coefs[i];               \
-        }                                                                 \
-        return lhs;                                                       \
+#define DEFINE_PAIRWISE_INP_FUNC(func_name, op)                                    \
+    Polynome* func_name(Polynome* const restrict lhs, Polynome const* const rhs) { \
+        assert(lhs);                                                               \
+        assert(lhs->len > 0);                                                      \
+        assert(rhs);                                                               \
+        assert(rhs->len > 0);                                                      \
+        assert(lhs->len >= rhs->len);                                              \
+                                                                                   \
+        for (size_t i = 0; i < rhs->len; i++) {                                    \
+            lhs->coefs[i] = lhs->coefs[i] op rhs->coefs[i];                        \
+        }                                                                          \
+                                                                                   \
+        return lhs;                                                                \
     }
 
 DEFINE_PAIRWISE_INP_FUNC(polynomeAddInp, +)
@@ -116,20 +102,26 @@ Polynome* polynomeMulKarInp(Polynome const* const lhs, Polynome const* const rhs
     assert(rhs);
     assert(rhs->len > 0);
     assert(res);
-    assert(res->len >= polynomeMulDegree(lhs, rhs));
+    assert(res->len > polynomeMulDegree(lhs, rhs));
+    assert(lhs->len == rhs->len);
 
-    const size_t half_len = ((lhs->len <= rhs->len) ? (lhs->len) : (rhs->len)) / 2;
-    const size_t lhs_degree = lhs->len - 1;
-    const size_t rhs_degree = rhs->len - 1;
+    const size_t half_len = lhs->len / 2;
+    assert(2 * half_len == lhs->len);
 
-    Polynome* const A = polynomeCoefDup(lhs, half_len, lhs_degree);
+    const Polynome A = {
+        half_len,
+        lhs->coefs + half_len,
+    };
 
     const Polynome B = {
         half_len,
         lhs->coefs,
     };
 
-    Polynome* const C = polynomeCoefDup(rhs, half_len, rhs_degree);
+    const Polynome C = {
+        half_len,
+        rhs->coefs + half_len,
+    };
 
     const Polynome D = {
         half_len,
@@ -137,7 +129,7 @@ Polynome* polynomeMulKarInp(Polynome const* const lhs, Polynome const* const rhs
     };
 
     Polynome AC = {
-        polynomeMulDegree(A, C) + 1,
+        polynomeMulDegree(&A, &C) + 1,
         res->coefs + 2 * half_len,
     };
 
@@ -146,44 +138,58 @@ Polynome* polynomeMulKarInp(Polynome const* const lhs, Polynome const* const rhs
         res->coefs,
     };
 
-    if (!A || !C) {
-        goto fail;
-    }
+    Polynome AB = {
+        half_len,
+        res->coefs + res->len - half_len,
+    };
 
-    polynomeMulInp(A, C, &AC);
-    polynomeMulInp(&B, &D, &BD);
+    Polynome CD = {
+        half_len,
+        res->coefs,
+    };
 
-    polynomeAddInp(A, &B);
-    polynomeAddInp(C, &D);
-
-    Polynome* const tmp = polynomeMul(A, C);
-    if (!tmp) {
-        goto fail;
-    }
-    polynomeSubInp(tmp, &AC);
-    polynomeSubInp(tmp, &BD);
-
-    Polynome res_tmp = {
-        tmp->len,
+    Polynome AB_CD = {
+        polynomeMulDegree(&AB, &CD) + 1,
         res->coefs + half_len,
     };
 
-    polynomeAddInp(&res_tmp, tmp);
+    memcpy(AB.coefs, A.coefs, sizeof(PolynomeType[AB.len]));
+    polynomeAddInp(&AB, &B);
 
-    polynomeFree(A);
-    polynomeFree(C);
-    polynomeFree(tmp);
+    memcpy(CD.coefs, C.coefs, sizeof(PolynomeType[CD.len]));
+    polynomeAddInp(&CD, &D);
+
+    if (!polynomeMulInp(&AB, &CD, &AB_CD)) {
+        return NULL;
+    }
+
+    memset(AB.coefs, 0, sizeof(PolynomeType[AB.len]));
+    memset(CD.coefs, 0, sizeof(PolynomeType[CD.len]));
+
+    Polynome* tmp = polynomeMul(&A, &C);
+    if (!tmp) {
+        return NULL;
+    }
+    polynomeAddInp(&AC, tmp);
+    polynomeSubInp(&AB_CD, tmp);
+
+    memset(tmp->coefs, 0, sizeof(PolynomeType[tmp->len]));
+    tmp->len = BD.len;
+    if (!polynomeMulInp(&B, &D, tmp)) {
+        free(tmp);
+        return NULL;
+    }
+    polynomeAddInp(&BD, tmp);
+    polynomeSubInp(&AB_CD, tmp);
+
+    free(tmp);
 
     return res;
-
-fail:
-    polynomeFree(A);
-    polynomeFree(C);
-
-    return NULL;
 }
 
 size_t polynomeMulDegree(Polynome const* const lhs, Polynome const* const rhs) {
+    assert(lhs && lhs->len > 0);
+    assert(rhs && rhs->len > 0);
     return lhs->len + rhs->len - 2;
 }
 
@@ -200,7 +206,7 @@ size_t polynomeMaxDegree(Polynome const* const poly) {
     return 0;
 }
 
-Polynome* polynomeRead(FILE* const file, const size_t len) {
+Polynome* polynomeRead(FILE* const restrict file, const size_t len) {
     assert(file);
     assert(len > 0);
 

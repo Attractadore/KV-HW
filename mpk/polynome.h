@@ -20,11 +20,6 @@ typedef struct {
 Polynome* polynomeAlloc(size_t degree);
 void polynomeFree(Polynome* poly);
 
-Polynome* polynomeCoefDup(Polynome const* poly, size_t start_degree, size_t end_degree);
-
-Polynome* polynomeAddInp(Polynome* lhs, Polynome const* rhs);
-Polynome* polynomeSubInp(Polynome* lhs, Polynome const* rhs);
-
 Polynome* polynomeMul(Polynome const* lhs, Polynome const* rhs);
 Polynome* polynomeMulInp(Polynome const* lhs, Polynome const* rhs, Polynome* res);
 Polynome* polynomeMulBase(Polynome const* lhs, Polynome const* rhs);
