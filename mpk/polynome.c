@@ -96,62 +96,52 @@ Polynome* polynomeMulBaseInp(Polynome const* const lhs, Polynome const* const rh
     return res;
 }
 
-Polynome* polynomeMulKarInp(Polynome const* const lhs, Polynome const* const rhs, Polynome* const restrict res) {
+Polynome* polynomeMulKarInp2(Polynome const* const lhs, Polynome const* const rhs, Polynome* const restrict res) {
     assert(lhs);
     assert(lhs->len > 0);
     assert(rhs);
     assert(rhs->len > 0);
     assert(res);
     assert(res->len > polynomeMulDegree(lhs, rhs));
-    assert(lhs->len == rhs->len);
-
-    const size_t half_len = lhs->len / 2;
-    assert(2 * half_len == lhs->len);
-
-    const Polynome A = {
-        half_len,
-        lhs->coefs + half_len,
-    };
+    assert(lhs->len % 2 == 0);
+    assert(rhs->len % 2 == 0);
 
     const Polynome B = {
-        half_len,
+        lhs->len / 2,
         lhs->coefs,
     };
 
-    const Polynome C = {
-        half_len,
-        rhs->coefs + half_len,
+    const Polynome A = {
+        lhs->len / 2,
+        lhs->coefs + B.len,
     };
 
     const Polynome D = {
-        half_len,
+        rhs->len / 2,
         rhs->coefs,
     };
 
-    Polynome AC = {
-        polynomeMulDegree(&A, &C) + 1,
-        res->coefs + 2 * half_len,
-    };
-
-    Polynome BD = {
-        polynomeMulDegree(&B, &D) + 1,
-        res->coefs,
+    const Polynome C = {
+        rhs->len / 2,
+        rhs->coefs + D.len,
     };
 
     Polynome AB = {
-        half_len,
-        res->coefs + res->len - half_len,
+        A.len,
+        NULL,
     };
 
     Polynome CD = {
-        half_len,
+        C.len,
         res->coefs,
     };
 
     Polynome AB_CD = {
         polynomeMulDegree(&AB, &CD) + 1,
-        res->coefs + half_len,
+        res->coefs + CD.len,
     };
+
+    AB.coefs = AB_CD.coefs + AB_CD.len;
 
     memcpy(AB.coefs, A.coefs, sizeof(PolynomeType[AB.len]));
     polynomeAddInp(&AB, &B);
@@ -166,6 +156,16 @@ Polynome* polynomeMulKarInp(Polynome const* const lhs, Polynome const* const rhs
     memset(AB.coefs, 0, sizeof(PolynomeType[AB.len]));
     memset(CD.coefs, 0, sizeof(PolynomeType[CD.len]));
 
+    Polynome AC = {
+        polynomeMulDegree(&A, &C) + 1,
+        res->coefs + B.len + D.len,
+    };
+
+    Polynome BD = {
+        polynomeMulDegree(&B, &D) + 1,
+        res->coefs,
+    };
+
     Polynome* tmp = polynomeMul(&A, &C);
     if (!tmp) {
         return NULL;
@@ -176,13 +176,67 @@ Polynome* polynomeMulKarInp(Polynome const* const lhs, Polynome const* const rhs
     memset(tmp->coefs, 0, sizeof(PolynomeType[tmp->len]));
     tmp->len = BD.len;
     if (!polynomeMulInp(&B, &D, tmp)) {
-        free(tmp);
+        polynomeFree(tmp);
         return NULL;
     }
     polynomeAddInp(&BD, tmp);
     polynomeSubInp(&AB_CD, tmp);
 
-    free(tmp);
+    polynomeFree(tmp);
+
+    return res;
+}
+
+Polynome* polynomeMulKarInp(Polynome const* const lhs, Polynome const* const rhs, Polynome* const restrict res) {
+    assert(lhs);
+    assert(rhs);
+    assert(res);
+    assert(res->len > polynomeMulDegree(lhs, rhs));
+
+    const Polynome new_lhs = {
+        lhs->len - lhs->len % 2,
+        lhs->coefs,
+    };
+
+    const Polynome new_rhs = {
+        rhs->len - rhs->len % 2,
+        rhs->coefs,
+    };
+
+    Polynome new_res = {
+        polynomeMulDegree(&new_lhs, &new_rhs) + 1,
+        res->coefs,
+    };
+
+    if (!polynomeMulKarInp2(&new_lhs, &new_rhs, &new_res)) {
+        return NULL;
+    }
+
+    if (lhs->len % 2) {
+        Polynome lhs_v = {
+            1,
+            lhs->coefs + lhs->len - 1,
+        };
+        Polynome dst = {
+            rhs->len,
+            res->coefs + lhs->len - 1,
+        };
+        polynomeMulBaseInp(&lhs_v, rhs, &dst);
+    }
+    if (rhs->len % 2) {
+        Polynome rhs_v = {
+            1,
+            rhs->coefs + rhs->len - 1,
+        };
+        Polynome dst = {
+            lhs->len,
+            res->coefs + rhs->len - 1,
+        };
+        polynomeMulBaseInp(lhs, &rhs_v, &dst);
+    }
+    if (lhs->len % 2 && rhs->len % 2) {
+        res->coefs[lhs->len + rhs->len - 2] = lhs->coefs[lhs->len - 1] * rhs->coefs[rhs->len - 1];
+    }
 
     return res;
 }
