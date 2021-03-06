@@ -26,8 +26,11 @@ Polynome* polynomeMulBase(Polynome const* lhs, Polynome const* rhs);
 Polynome* polynomeMulBaseInp(Polynome const* lhs, Polynome const* rhs, Polynome* res);
 Polynome* polynomeMulKar(Polynome const* lhs, Polynome const* rhs);
 Polynome* polynomeMulKarInp(Polynome const* lhs, Polynome const* rhs, Polynome* res);
+Polynome* polynomeMulToom(Polynome const* lhs, Polynome const* rhs);
+Polynome* polynomeMulToomInp(Polynome const* lhs, Polynome const* rhs, Polynome* res);
 
 size_t polynomeMulDegree(Polynome const* lhs, Polynome const* rhs);
+size_t polynomeMulLen(Polynome const* lhs, Polynome const* rhs);
 size_t polynomeMaxDegree(Polynome const* poly);
 
 Polynome* polynomeRead(FILE* file, size_t len);
