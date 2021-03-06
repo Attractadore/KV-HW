@@ -37,5 +37,9 @@ endif()
 
 project(mpk)
 add_executable(mpk "polynome.h" "polynome.c" "mpk.c")
+
+project(test_toom)
+add_executable(test_toom "test_toom.c")
+
 project(gen_poly)
 add_executable(gen_poly "gen_poly.c")
