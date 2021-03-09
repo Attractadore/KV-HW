@@ -4,7 +4,7 @@
 
 void printArr(size_t n) {
     while (n--) {
-        printf("%d ", rand());
+        printf("%d ", rand() % 1000);
     }
     printf("\n");
 }
